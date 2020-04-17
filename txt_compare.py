@@ -4,7 +4,7 @@
 # @Author : https://zhuanlan.zhihu.com/p/62910942；vivid_yellow
 # @Date : 2020-4-16
 
-# Previous version : asr_txt_comp_v1_0.py
+# Previous version : txt_compare_v1_0.py
 # Function :
 """
     比对两个中文句子（或者多个句子的总距离）的距离（莱文斯坦距离，又称 Levenshtein 距离）（编辑距离与ASR评测的python实现代码：https://zhuanlan.zhihu.com/p/62910942）
