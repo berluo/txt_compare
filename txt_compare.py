@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-# @Revision : txt_compare_v2_0.py
+# @Revision : txt_compare_v3_0.py
 # @Author : https://zhuanlan.zhihu.com/p/62910942；vivid_yellow
-# @Date : 2020-4-16
+# @Date : 2020-4-17 16:38:38
 
-# Previous version : txt_compare_v1_0.py
+# Previous version : txt_compare_v2_0.py
 # Function :
 """
     比对两个中文句子（或者多个句子的总距离）的距离（莱文斯坦距离，又称 Levenshtein 距离）（编辑距离与ASR评测的python实现代码：https://zhuanlan.zhihu.com/p/62910942）
 """
 # Description of Changes :
 """
+    1.增加了如下三个函数，并兼容多个句子的对比总结果统计
+    2.def single_sen_comp(str_ref, str_hyp)
+    3.def get_result(sub_num, del_num, ins_num, n_num, sen_num, wrong_recog_num)
+    4.def main()
+    5."打印对比的两个句子的具体详细修改位置"这段代码，优化：中文推进2个字符，英文（ASCII码在128以内）推进1个字符，这样三段文字就对齐了
 new:
-    增加了如下三个函数，并兼容多个句子的对比总结果统计
-    def single_sen_comp(str_ref, str_hyp)
-    def get_result(sub_num, del_num, ins_num, n_num, sen_num, wrong_recog_num)
-    def main()
-    "打印对比的两个句子的具体详细修改位置"这段代码，优化：中文推进2个字符，英文（ASCII码在128以内）推进1个字符，这样三段文字就对齐了
+    6.重新优化一下show_sentences_comp(str_ref, str_hyp, paths)【本来是优化好了的：把重复判断的那部分代码提到前面只判断一次是否出现中文而增加空格在前面，但是可能我把ref、hyp搞反了】
+    【没有搞反，是因为确实到最后一个字符串已经完了，另一个还在继续insertion或者deletion。提到前面来的时候，两个（而另一个可能已经越界了）都会被判断是否字符ASCII大于128】【调换一下str_ref与str_hyp就知】
+    【之所以以前的代码没有出问题，是因为判断是哪个动作的时候，刚好不需要判断完了的那个是什么字符，所以就根本没有调用】
+    解决办法：min(i, len_str_ref - 1)防止列表越界
+    
 """
 # Remarks :
 """    
@@ -113,43 +118,45 @@ def show_sentences_comp(str_ref, str_hyp, paths):
     str_ref_new = ""
     str_hyp_new = ""
     str_renew = ""
+
+
+    len_str_ref = len(str_ref)
+    len_str_hyp = len(str_hyp)
+    # print(str_ref)
+    # print(len_str_ref)
+    # print(str_hyp)
+    # print(len_str_hyp)
+    # print(paths)
+
     for path in paths:
+
+        # print("i: ", i)
+        # print("j: ", j)
+        i = min(i, len_str_ref - 1)  # min(i, len_str_ref - 1)防止列表越界
+        j = min(j, len_str_hyp - 1)
+
+        if ord(str_ref[i]) <= 750:  # print(ord("˸")) 760此行之前的都是一个字符宽
+            # if ord(str_hyp[j]) <= 750:
+            #     pass
+            if ord(str_hyp[j]) > 750:
+                str_renew += "."
+                str_ref_new += "."
+        elif ord(str_hyp[j]) <= 750:
+            str_renew += "."
+            str_hyp_new += "."
+        elif ord(str_hyp[j]) > 750:
+            str_renew += "."
+
         if path == "":
             str_renew += "."
             str_ref_new += str_ref[i]
             str_hyp_new += str_hyp[j]
-
-            if ord(str_ref[i]) <= 128:
-                # if ord(str_hyp[j]) <= 128:
-                #     pass
-                if ord(str_hyp[j]) > 128:
-                    str_renew += "."
-                    str_ref_new += "."
-            elif ord(str_hyp[j]) <= 128:
-                str_renew += "."
-                str_hyp_new += "."
-            elif ord(str_hyp[j]) > 128:
-                str_renew += "."
-
             i += 1
             j += 1
         elif path == 'sub':
             str_renew += "S"
             str_ref_new += str_ref[i]
             str_hyp_new += str_hyp[j]
-
-            if ord(str_ref[i]) <= 128:
-                # if ord(str_hyp[j]) <= 128:
-                #     pass
-                if ord(str_hyp[j]) > 128:
-                    str_renew += "."
-                    str_ref_new += "."
-            elif ord(str_hyp[j]) <= 128:
-                str_renew += "."
-                str_hyp_new += "."
-            elif ord(str_hyp[j]) > 128:
-                str_renew += "."
-
             i += 1
             j += 1
 
@@ -157,11 +164,6 @@ def show_sentences_comp(str_ref, str_hyp, paths):
             str_renew += "D"
             str_ref_new += str_ref[i]
             str_hyp_new += "*"  # str_hyp[j]
-
-            if ord(str_ref[i]) > 128:
-                str_renew += "."
-                str_hyp_new += "."
-
             i += 1
             # j += 1
 
@@ -169,10 +171,6 @@ def show_sentences_comp(str_ref, str_hyp, paths):
             str_renew += "I"
             str_ref_new += "*"  # str_ref[i]
             str_hyp_new += str_hyp[j]
-
-            if ord(str_hyp[j]) > 128:
-                str_renew += "."
-                str_ref_new += "."
 
             # i += 1
             j += 1
@@ -242,7 +240,7 @@ def get_result(sub_num, del_num, ins_num, n_num, sen_num, wrong_recog_num):
                                                                                            "w_acc:", w_acc, "w_corr:",
                                                                                            w_corr)
     str4 = "{:<18}{:<10d}\t {:<18}{:<10d}\t {:<18}{:<10.2%}".format("sen_num:", sen_num, "wrong_recog_num:",
-                                                                      wrong_recog_num, "s_corr:", s_corr)
+                                                                    wrong_recog_num, "s_corr:", s_corr)
     print("----------------比对结果如下：----------------")
     print(str1)
     print(str2)
@@ -253,31 +251,31 @@ def get_result(sub_num, del_num, ins_num, n_num, sen_num, wrong_recog_num):
 def read_txt(file_name):
     """读取两个文本，容错空行，以ref文本为依据（寻找是否hyp文本都有对应句子（句子末尾有方括号的！方括号里面的文本（截取前面一部分？）当做名字，多个重复的也报错），不全就报错！）"""
 
-    pat1 = re.compile("[(（]([\d\D]*?)[)）]") # 可以优化一下，左边是中文"（"，右边也只能是中文“）”
+    pat1 = re.compile("[(（]([\d\D]*?)[)）]")  # 可以优化一下，左边是中文"（"，右边也只能是中文“）”
     dict_sentence = {}
     try:
-        fo = open(file_name,"r",encoding="utf-8")
+        fo = open(file_name, "r", encoding="utf-8")
     except Exception as e:
         print(e)
-        fo = open(file_name,"r",encoding="gbk")
+        fo = open(file_name, "r", encoding="gbk")
 
     error_set_replicate = set()
     for line in fo:
         if line.strip() == "":
             pass
         else:
-            match_list = re.finditer(pat1,line)
-            sentence_name,span = "",(0,0)
-            for match in match_list: # 只要最后一个匹配项，考虑没有匹配到的情况
-                sentence_name,span = match.group(1), match.span()
-            if sentence_name != "": # 匹配到
-                if line[span[1]:].rstrip() == "": # 匹配到，而且（匹配到取【1】不会报错）右边是空字符的情况，就算真的是的
+            match_list = re.finditer(pat1, line)
+            sentence_name, span = "", (0, 0)
+            for match in match_list:  # 只要最后一个匹配项，考虑没有匹配到的情况
+                sentence_name, span = match.group(1), match.span()
+            if sentence_name != "":  # 匹配到
+                if line[span[1]:].rstrip() == "":  # 匹配到，而且（匹配到取【1】不会报错）右边是空字符的情况，就算真的是的
                     sentence_content = line[:span[0]]
-                    if dict_sentence.get(sentence_name,"have_replicated") != "have_replicated":
+                    if dict_sentence.get(sentence_name, "have_replicated") != "have_replicated":
                         # print("重复了！只取到第一个！请确认此条文本：", sentence_name)
                         error_set_replicate.add(sentence_name)
                         continue
-                    sentence_name = sentence_name.rsplit(".",1)[0]
+                    sentence_name = sentence_name.rsplit(".", 1)[0]
                     # print(sentence_name)
                     dict_sentence[sentence_name] = sentence_content
                 else:
@@ -287,22 +285,22 @@ def read_txt(file_name):
     fo.close()
 
     print(dict_sentence)
-    print("【警告！！】这些句子名称重复出现！只取到第一个！请确认这些句子：",error_set_replicate)
+    print("【警告！！】这些句子名称重复出现！只取到第一个！请确认这些句子：", error_set_replicate)
     return dict_sentence
 
 
 def main():
     st = time.time()
 
-    sen_num = 0 # 句子数
-    total_wrong_recog_num = 0 # 判断有误的句子数
-    total_sub_num, total_del_num, total_ins_num, total_n_num = 0, 0, 0, 0 # 装最后总的错误数（分类别）
+    sen_num = 0  # 句子数
+    total_wrong_recog_num = 0  # 判断有误的句子数
+    total_sub_num, total_del_num, total_ins_num, total_n_num = 0, 0, 0, 0  # 装最后总的错误数（分类别）
 
     filename_ref = "ref.txt"
     filename_hyp = "hyp.txt"
 
     #
-    print("dict_sentence_ref: ",end="")
+    print("dict_sentence_ref: ", end="")
     dict_sentence_ref = read_txt(filename_ref)
     print("dict_sentence_hyp: ", end="")
     dict_sentence_hyp = read_txt(filename_hyp)
@@ -338,7 +336,7 @@ def main():
         total_wrong_recog_num += wrong_recog_num
         sen_num += 1
 
-    if total_n_num != 0: # 考虑到比对句子为空的情况
+    if total_n_num != 0:  # 考虑到比对句子为空的情况
         get_result(total_sub_num, total_del_num, total_ins_num, total_n_num, sen_num, total_wrong_recog_num)
     else:
         print("【警告！！】比对句子为空，请确认！")
